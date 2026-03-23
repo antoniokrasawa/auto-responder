@@ -1,0 +1,4 @@
+pyrogram==2.0.106
+gspread==6.0.2
+google-auth==2.27.0
+python-dotenv==1.0.0

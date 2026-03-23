@@ -1,0 +1,13 @@
+# Environment and secrets
+.env
+auto_responder_session.session
+
+# Runtime state
+conversations.json
+failed_leads.json
+authorized_users.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
