@@ -103,44 +103,54 @@ If no keyword matches: Type left empty, raw traffic text saved in Notes.
 ## Deploy to Hetzner
 
 **Server**: 77.42.69.208 (same VPS as telegram-bot and n8n)
+**GitHub**: `antoniokrasawa/auto-responder` (public)
+**Server path**: `/opt/bots/auto-responder` (git repo linked to GitHub)
 
-**docker-compose has issues** with this server (v1.29 ContainerConfig bug). Use raw docker commands instead.
+### How to deploy (after ANY code change)
 
-**First time setup** (already done):
-1. Create session locally: `python responder.py` (enter code + 2FA password)
-2. Copy files to server: `scp -r auto-responder root@77.42.69.208:/opt/bots/`
-3. Copy session: `scp auto_responder_session.session root@77.42.69.208:/opt/bots/auto-responder/`
-4. Build image on server: `cd /opt/bots/auto-responder && docker build -t auto-responder-img .`
-5. Start container: `bash /tmp/r.sh`
-
-**Update code after changes:**
 ```bash
-# From local machine (in auto-responder directory):
-scp responder.py root@77.42.69.208:/opt/bots/auto-responder/
-# (also scp any other changed files: config.py, lang.py, etc.)
-
-# On server:
-cd /opt/bots/auto-responder && docker build -t auto-responder-img .
-bash /tmp/r.sh
-
-# Check logs:
-docker logs auto-responder --tail 20
+cd auto-responder
+bash deploy.sh
 ```
 
-**Start script** (`/tmp/r.sh` on server):
+That's it. The script will: commit + push to GitHub + pull on server + rebuild Docker + restart + show logs.
+
+**IMPORTANT**: Always use `deploy.sh`. Do NOT scp files manually - the server pulls from GitHub now.
+
+### What deploy.sh does
+
+1. `git add -A` + `git commit` (asks for message, or uses default)
+2. `git push` to GitHub
+3. SSH to server: `git pull` + `docker build` + restart container
+4. Shows last 15 lines of logs to verify
+
+### First time setup (already done)
+
+1. Create session locally: `python responder.py` (enter code + 2FA password)
+2. Copy session to server: `scp auto_responder_session.session root@77.42.69.208:/opt/bots/auto-responder/`
+3. Server git repo initialized and linked to GitHub
+
+### Start script (`/tmp/r.sh` on server)
+
 ```bash
 docker rm -f auto-responder
 D=/opt/bots/auto-responder
-docker run -d --name auto-responder --restart unless-stopped --env-file $D/.env -v $D/whitelist.json:/app/whitelist.json -v $D/conversations.json:/app/conversations.json -v $D/auto_responder_session.session:/app/auto_responder_session.session auto-responder-img
+docker run -d --name auto-responder --restart unless-stopped \
+  --env-file $D/.env \
+  -v $D/whitelist.json:/app/whitelist.json \
+  -v $D/conversations.json:/app/conversations.json \
+  -v $D/auto_responder_session.session:/app/auto_responder_session.session \
+  -v $D/failed_leads.json:/app/failed_leads.json \
+  auto-responder-img
 ```
 
-**Useful commands:**
+### Useful commands (run in separate terminal)
+
 ```bash
-docker logs auto-responder --tail 30     # View recent logs
-docker logs -f auto-responder            # Follow logs live (Ctrl+C to exit)
-docker restart auto-responder            # Restart without rebuild
-docker stop auto-responder               # Stop
-bash /tmp/r.sh                           # Start/restart with fresh container
+ssh root@77.42.69.208 "docker logs auto-responder --tail 30"   # View recent logs
+ssh root@77.42.69.208 "docker logs -f auto-responder"          # Follow logs live
+ssh root@77.42.69.208 "docker restart auto-responder"          # Restart without rebuild
+ssh root@77.42.69.208 "bash /tmp/r.sh"                         # Full restart
 ```
 
 ## Tech Stack
