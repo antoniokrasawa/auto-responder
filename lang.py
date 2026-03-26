@@ -69,7 +69,7 @@ MESSAGES = {
             "Please share your website, channel, or portfolio link:"
         ),
         'done': (
-            "Thanks! I've noted everything down. I'll review and get back to you soon."
+            "Thanks! Info saved. I'll review and get back to you soon."
         ),
         'done_other': (
             "Thanks for the info! I'll pass this to a colleague who covers those regions. They'll reach out soon."
@@ -125,7 +125,7 @@ MESSAGES = {
             "Comparte el link de tu sitio web, canal o portafolio:"
         ),
         'done': (
-            "Gracias! Ya tengo toda la info. Te respondo pronto."
+            "Gracias! Info guardada. Te respondo pronto."
         ),
         'done_other': (
             "Gracias por la info! Se la paso a un colega que cubre esas regiones. Te contactara pronto."
@@ -181,7 +181,7 @@ MESSAGES = {
             "Скинь ссылку на сайт, канал или портфолио:"
         ),
         'done': (
-            "Спасибо! Всё записал. Скоро вернусь с ответом."
+            "Спасибо, сохранил информацию! Скоро вернусь с ответом."
         ),
         'done_other': (
             "Спасибо за инфо! Передам коллеге, который работает с этими регионами. Скоро свяжется."

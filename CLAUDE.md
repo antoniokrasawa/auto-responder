@@ -86,17 +86,17 @@ To find a user's ID: check bot logs (`docker logs auto-responder`) — every mes
 
 ## Type Detection Keywords
 
-Traffic source text is matched against keywords to auto-detect Type (multiple can match):
-- SEO: seo, organic, search engine
-- PPC: ppc, google ads, adwords, cpc, paid search
-- STREAMER: stream, twitch, kick, youtube live
-- INFLUENCER: influenc, blog, content creator, instagram, tiktok
-- MEDIABUY: media buy, mediabuy, media buying, facebook ads, fb ads, push, popunder, native ads, buying
-- NETWORK: network, affiliate network, cpa network, aff network
-- EMAIL: email, newsletter, mailing
-- TIPSTER: tipster, tips, betting tips, predictions
-- FB: facebook group, fb group, fb
-- InApp/ASO: app, aso, mobile app, in-app
+Traffic source text is matched against ~170 keywords in 3 languages (EN/ES/RU) including industry slang. Full list in `config.py` `TYPE_KEYWORDS`. Key examples per type:
+- SEO: seo, organic, сео, сеошник, сеошка, органика, posicionamiento
+- PPC: ppc, google ads, sem, ппс, контекст, контекстолог, директ, pago por clic
+- STREAMER: stream, twitch, kick, стрим, стример, стримлю, transmision en vivo
+- INFLUENCER: influencer, blogger, youtuber, инфлюенсер, блогер, тиктокер, инстаблогер, influenciador
+- MEDIABUY: media buy, push, popunder, медиабайер, байер, арбитраж, лью, залив, заливала, compra de medios
+- NETWORK: affiliate network, cpa network, партнерка, партнерская сеть, red de afiliados
+- EMAIL: email, newsletter, mailing, емейл, рассылка, correo, lista de correo
+- TIPSTER: tipster, picks, handicapper, каппер, типстер, прогнозы, ставочник, pronosticos
+- FB: fb, facebook, meta ads, фб, фейсбук, фейс, таргет, таргетолог, лью с фб
+- InApp/ASO: in-app, aso, mobile app, инапп, мобайл, мобилка, прилка, trafico movil
 
 If no keyword matches: Type left empty, raw traffic text saved in Notes.
 
@@ -171,7 +171,7 @@ ssh root@77.42.69.208 "bash /tmp/r.sh"                         # Full restart
 - Userbot can only be run on ONE device/server at a time (Telegram session constraint)
 - First login requires interactive code input — can't be fully automated
 - 2FA password required if enabled on the account
-- No NLP/AI for message analysis — simple keyword matching only
+- No NLP/AI for message analysis — keyword matching in 3 languages (EN/ES/RU) with industry slang (~170 keywords)
 - No auto-classification to NOT RELEVANT — all leads saved as NEW
 - No Vertical detection (not asked in flow)
 - Inline keyboards not available for userbots — all input is text-based
