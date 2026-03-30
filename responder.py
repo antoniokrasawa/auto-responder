@@ -52,6 +52,15 @@ sheets = None
 
 # --- Helpers ---
 
+# Track message IDs sent by the bot to avoid owner-takeover false positives
+_bot_message_ids = set()
+
+
+def _clean_input(text):
+    """Strip invisible Unicode chars (zero-width spaces, etc.) from user input"""
+    return re.sub(r'[^\x20-\x7E\u0400-\u04FF\u00C0-\u024F]', '', text)
+
+
 def detect_type(text):
     """Detect all matching traffic source types from free text"""
     text_lower = text.lower()
@@ -65,7 +74,7 @@ def detect_type(text):
 def parse_region_input(text):
     """Parse region selection from numbers like '1 3' or '1,3'.
     Strict: each part must be exactly one digit 1-5. Rejects '2525' etc."""
-    stripped = text.strip()
+    stripped = _clean_input(text).strip()
     if len(stripped) > 30:
         return []
     parts = re.split(r'[,\s]+', stripped)
@@ -85,7 +94,7 @@ def parse_region_input(text):
 def parse_geo_input(text, valid_codes):
     """Parse country codes from text. Accepts codes (ES DE) or numbers (1 3) or ALL.
     Strict: each part must be a valid code or number. Any garbage = reject all."""
-    stripped = text.strip().upper()
+    stripped = _clean_input(text).strip().upper()
     if stripped == 'ALL':
         return list(valid_codes)
     if len(stripped) > 100:
@@ -112,6 +121,14 @@ def parse_geo_input(text, valid_codes):
         # Any non-matching part = invalid input
         return []
     return geos
+
+
+async def bot_reply(message, text):
+    """Send reply and track message ID to prevent owner-takeover false positive"""
+    sent = await message.reply(text)
+    if sent and hasattr(sent, 'id'):
+        _bot_message_ids.add(sent.id)
+    return sent
 
 
 def get_display_name(conv):
@@ -179,6 +196,11 @@ ACTIVE_STEPS = (
 
 @app.on_message(filters.private & filters.me)
 async def handle_admin_command(client: Client, message: Message):
+    # Skip bot's own replies (tracked by ID)
+    if message.id in _bot_message_ids:
+        _bot_message_ids.discard(message.id)
+        return
+
     text = (message.text or '').strip()
     if not text.startswith('!'):
         # Owner sent a normal message in a private chat — stop bot for this user
@@ -318,12 +340,13 @@ async def handle_private_message(client: Client, message: Message):
         # --- Traffic source ---
         if step == STEP_ASK_TRAFFIC:
             state.update(user_id, traffic_source=text, step=STEP_ASK_REGION)
-            await message.reply(get_message(lang, 'ask_region'))
+            await bot_reply(message, get_message(lang, 'ask_region'))
             return
 
         # --- Region selection ---
         if step == STEP_ASK_REGION:
             regions = parse_region_input(text)
+            log.info("  Region input: repr=" + repr(text) + " -> parsed=" + str(regions))
             if not regions:
                 # Off-script input — stop responding
                 state.update(user_id, step=STEP_STOPPED)
@@ -346,11 +369,11 @@ async def handle_private_message(client: Client, message: Message):
                     log.info("Lead passed to colleagues (no link): " + get_display_name(conv))
                 else:
                     state.update(user_id, step=STEP_ASK_LINKS)
-                    await message.reply(get_message(lang, 'ask_links'))
+                    await bot_reply(message, get_message(lang, 'ask_links'))
                 return
 
             state.update(user_id, step=next_step)
-            await message.reply(get_message(lang, msg_key))
+            await bot_reply(message, get_message(lang, msg_key))
             return
 
         # --- Tier 1 / Tier 2 / LATAM countries ---
@@ -364,6 +387,7 @@ async def handle_private_message(client: Client, message: Message):
                 valid = LATAM_CODES
 
             geos = parse_geo_input(text, valid)
+            log.info("  GEO input: repr=" + repr(text) + " -> parsed=" + str(geos))
             if not geos:
                 # Off-script input — stop responding
                 state.update(user_id, step=STEP_STOPPED)
@@ -389,10 +413,10 @@ async def handle_private_message(client: Client, message: Message):
                     log.info("Qualified lead (no link): " + get_display_name(conv))
                 else:
                     state.update(user_id, step=STEP_ASK_LINKS)
-                    await message.reply(get_message(lang, 'ask_links'))
+                    await bot_reply(message, get_message(lang, 'ask_links'))
             else:
                 state.update(user_id, step=next_step)
-                await message.reply(get_message(lang, msg_key))
+                await bot_reply(message, get_message(lang, msg_key))
             return
 
         # --- Links ---
@@ -442,9 +466,9 @@ async def handle_private_message(client: Client, message: Message):
         first_message=first_message
     )
 
-    await message.reply(get_message(lang, 'greeting'))
+    await bot_reply(message, get_message(lang, 'greeting'))
     await asyncio.sleep(1)
-    await message.reply(get_message(lang, 'ask_traffic'))
+    await bot_reply(message, get_message(lang, 'ask_traffic'))
     log.info("New inbound from " + str(user.first_name) + " (@" + str(user.username) + "), lang=" + lang)
 
 
@@ -616,10 +640,10 @@ async def _save_lead(conv):
 
 async def _send_finish(message, lang, msg_key):
     """Send final message + vacation notice if enabled"""
-    await message.reply(get_message(lang, msg_key))
+    await bot_reply(message, get_message(lang, msg_key))
     if VACATION_MODE:
         await asyncio.sleep(2)
-        await message.reply(get_message(lang, 'vacation'))
+        await bot_reply(message, get_message(lang, 'vacation'))
 
 
 async def _notify(client, conv):

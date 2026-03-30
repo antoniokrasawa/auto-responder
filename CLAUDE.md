@@ -55,6 +55,9 @@ To find a user's ID: check bot logs (`docker logs auto-responder`) — every mes
 - **Whitelist**: whitelist.json — colleague usernames to ignore
 - **is_contact check**: skips people already in Telegram contacts
 - **Chat history check**: before starting flow, fetches last 2 messages from chat — if >1 message exists, it's an existing conversation, skip auto-reply
+- **Owner takeover**: when Anton sends any message in a chat with active bot conversation, bot stops for that user immediately
+- **Strict input validation**: region/geo input must be clean separated numbers or codes. "2525" or random text = rejected
+- **No retries on invalid input**: if user gives off-script input at any step, bot stops responding entirely (no "please try again" messages). Bot only works when dialog follows the script exactly.
 - **Dedup**: checks Telegram username in sheet before writing
 - **Sheet filtering**: Only Tier1/Tier2/LATAM leads saved to sheet; Asia/Africa only = not saved
 - **VACATION_MODE**: When True, sends a P.S. vacation message after qualification (currently OFF)
@@ -83,6 +86,7 @@ To find a user's ID: check bot logs (`docker logs auto-responder`) — every mes
 5. `STEP_ASK_GEO_LATAM` — country codes/numbers/ALL (if LATAM selected)
 6. `STEP_ASK_LINKS` — free text (skipped for NO_LINK_TYPES)
 7. `STEP_DONE` / `STEP_DONE_OTHER` — finished
+8. `STEP_STOPPED` — bot stopped (off-script input or owner took over)
 
 ## Type Detection Keywords
 
@@ -176,3 +180,4 @@ ssh root@77.42.69.208 "bash /tmp/r.sh"                         # Full restart
 - No Vertical detection (not asked in flow)
 - Inline keyboards not available for userbots — all input is text-based
 - Chat history check adds ~0.5s latency on first message from new contacts (Telegram API call)
+- Bot stops on first invalid input — no second chances (prevents trolling/gaming the system)
