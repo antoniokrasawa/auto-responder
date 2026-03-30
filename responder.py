@@ -71,44 +71,140 @@ def detect_type(text):
     return matched
 
 
+REGION_ALIASES = {
+    '1': 'Tier 1', '2': 'Tier 2', '3': 'LATAM', '4': 'Asia', '5': 'Africa',
+    't1': 'Tier 1', 't2': 'Tier 2',
+    'tier1': 'Tier 1', 'tier2': 'Tier 2',
+    'tier 1': 'Tier 1', 'tier 2': 'Tier 2',
+    'latam': 'LATAM', 'lat': 'LATAM', 'la': 'LATAM',
+    'asia': 'Asia', 'as': 'Asia',
+    'africa': 'Africa', 'af': 'Africa', 'afr': 'Africa',
+    'eu': 'Tier 1', 'europe': 'Tier 1', 'western europe': 'Tier 1',
+    'eastern europe': 'Tier 2', 'ee': 'Tier 2',
+    'we': 'Tier 1', 'weu': 'Tier 1',
+}
+
+
 def parse_region_input(text):
-    """Parse region selection from numbers like '1 3' or '1,3'.
-    Strict: each part must be exactly one digit 1-5. Rejects '2525' etc."""
-    stripped = _clean_input(text).strip()
-    if len(stripped) > 30:
+    """Parse region selection: numbers (1 3), names (T1, LATAM), or mixed."""
+    stripped = _clean_input(text).strip().lower()
+    if not stripped or len(stripped) > 60:
         return []
-    parts = re.split(r'[,\s]+', stripped)
+
+    # Try full string first (e.g. "tier 1", "western europe")
+    if stripped in REGION_ALIASES:
+        return [REGION_ALIASES[stripped]]
+
+    parts = re.split(r'[,/&+\s]+', stripped)
+    # Rejoin "tier" + "1" → "tier 1" etc.
+    merged = []
+    i = 0
+    while i < len(parts):
+        if parts[i] == 'tier' and i + 1 < len(parts) and parts[i + 1] in ('1', '2'):
+            merged.append('tier ' + parts[i + 1])
+            i += 2
+        elif parts[i] == 'western' and i + 1 < len(parts) and parts[i + 1] == 'europe':
+            merged.append('western europe')
+            i += 2
+        elif parts[i] == 'eastern' and i + 1 < len(parts) and parts[i + 1] == 'europe':
+            merged.append('eastern europe')
+            i += 2
+        else:
+            merged.append(parts[i])
+            i += 1
+
     regions = []
-    for p in parts:
+    for p in merged:
         if not p:
             continue
-        if not re.match(r'^[1-5]$', p):
+        region = REGION_ALIASES.get(p)
+        if not region:
             return []  # any non-matching part = invalid
-        idx = int(p) - 1
-        region = REGION_OPTIONS[idx]
         if region not in regions:
             regions.append(region)
     return regions
 
 
+COUNTRY_ALIASES = {
+    # Tier 1
+    'spain': 'ES', 'espana': 'ES', 'espania': 'ES',
+    'portugal': 'PT',
+    'germany': 'DE', 'alemania': 'DE', 'deutschland': 'DE', 'германия': 'DE',
+    'austria': 'AT',
+    'switzerland': 'CH', 'suiza': 'CH', 'швейцария': 'CH',
+    'italy': 'IT', 'italia': 'IT', 'италия': 'IT',
+    'ireland': 'IE', 'irlanda': 'IE',
+    'denmark': 'DK', 'dinamarca': 'DK',
+    'finland': 'FI', 'finlandia': 'FI',
+    'norway': 'NO', 'noruega': 'NO',
+    'sweden': 'SE', 'suecia': 'SE',
+    'australia': 'AU',
+    'new zealand': 'NZ', 'nueva zelanda': 'NZ',
+    'canada': 'CA',
+    # Tier 2
+    'poland': 'PL', 'polonia': 'PL', 'польша': 'PL',
+    'czech': 'CZ', 'czechia': 'CZ', 'чехия': 'CZ',
+    'romania': 'RO', 'rumania': 'RO', 'румыния': 'RO',
+    'bulgaria': 'BG', 'болгария': 'BG',
+    'hungary': 'HU', 'hungria': 'HU', 'венгрия': 'HU',
+    'croatia': 'HR', 'croacia': 'HR', 'хорватия': 'HR',
+    'slovakia': 'SK', 'eslovaquia': 'SK',
+    'slovenia': 'SI', 'eslovenia': 'SI',
+    'greece': 'GR', 'grecia': 'GR', 'греция': 'GR',
+    'estonia': 'EE',
+    'lithuania': 'LT', 'lituania': 'LT', 'литва': 'LT',
+    'latvia': 'LV', 'letonia': 'LV', 'латвия': 'LV',
+    # LATAM
+    'brazil': 'BR', 'brasil': 'BR', 'бразилия': 'BR',
+    'mexico': 'MX', 'мексика': 'MX',
+    'argentina': 'AR', 'аргентина': 'AR',
+    'chile': 'CL', 'чили': 'CL',
+    'colombia': 'CO', 'колумбия': 'CO',
+    'peru': 'PE', 'перу': 'PE',
+    'other': 'Other', 'otro': 'Other', 'другие': 'Other', 'otros': 'Other',
+}
+
+
 def parse_geo_input(text, valid_codes):
-    """Parse country codes from text. Accepts codes (ES DE) or numbers (1 3) or ALL.
-    Strict: each part must be a valid code or number. Any garbage = reject all."""
-    stripped = _clean_input(text).strip().upper()
-    if stripped == 'ALL':
+    """Parse country codes/names from text. Accepts codes (ES DE), numbers (1 3),
+    country names (Spain, Brazil), or ALL."""
+    stripped = _clean_input(text).strip()
+    upper = stripped.upper()
+    if upper == 'ALL':
         return list(valid_codes)
-    if len(stripped) > 100:
+    if len(stripped) > 150:
         return []
 
-    parts = re.split(r'[,\s]+', stripped)
+    parts = re.split(r'[,/&+\s]+', stripped)
+    # Rejoin multi-word country names
+    merged = []
+    i = 0
+    lower_parts = [p.lower() for p in parts]
+    while i < len(lower_parts):
+        if i + 1 < len(lower_parts):
+            two_word = lower_parts[i] + ' ' + lower_parts[i + 1]
+            if two_word in COUNTRY_ALIASES:
+                merged.append(two_word)
+                i += 2
+                continue
+        merged.append(lower_parts[i])
+        i += 1
+
     geos = []
-    for p in parts:
+    for p in merged:
         if not p:
             continue
+        p_upper = p.upper()
         # Try as country code
-        if p in valid_codes:
-            if p not in geos:
-                geos.append(p)
+        if p_upper in valid_codes:
+            if p_upper not in geos:
+                geos.append(p_upper)
+            continue
+        # Try as country name alias
+        alias = COUNTRY_ALIASES.get(p)
+        if alias and alias in valid_codes:
+            if alias not in geos:
+                geos.append(alias)
             continue
         # Try as number (1-2 digits only)
         if re.match(r'^\d{1,2}$', p):
