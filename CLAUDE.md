@@ -59,7 +59,7 @@ To find a user's ID: check bot logs (`docker logs auto-responder`) — every mes
 - **Smart input parsing**: Region accepts numbers (1 3), names (T1, LATAM, Tier 1), abbreviations (EU, EE), and mixed (1, LATAM). GEO accepts codes (ES DE), numbers (1 3), country names in EN/ES/RU (Spain, Brasil, Германия), or ALL. Input sanitized via `_clean_input()` which strips invisible Unicode characters. Unrecognized input still stops the bot.
 - **No retries on invalid input**: if user gives genuinely off-script input at any step, bot stops responding entirely (no "please try again" messages).
 - **Dedup**: checks Telegram username in sheet before writing
-- **Sheet filtering**: Only Tier1/Tier2/LATAM leads saved to sheet; Asia/Africa only = not saved
+- **Sheet filtering**: All GEOs saved to sheet (Asia/Africa stored as region name in GEO field since no country drill-down)
 - **VACATION_MODE**: When True, sends a P.S. vacation message after qualification (currently OFF)
 
 ## Files
@@ -75,7 +75,7 @@ To find a user's ID: check bot logs (`docker logs auto-responder`) — every mes
 | `conversations.json` | Active conversation states (auto-managed) |
 | `start.sh` | Docker start script (on server at /tmp/r.sh) |
 | `.env` | API_ID, API_HASH, PHONE, NOTIFY_CHAT_ID, GOOGLE_CREDENTIALS |
-| `Dockerfile` | Python 3.11-slim container |
+| `Dockerfile` | Python 3.11-slim container, PYTHONUNBUFFERED=1 |
 
 ## Conversation Steps
 
