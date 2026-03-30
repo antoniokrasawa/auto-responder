@@ -16,8 +16,8 @@ New DM from unknown contact
   -> Check chat history -> skip if prior messages exist (not a truly new conversation)
   -> Detect language (EN/ES/RU) from first message
   -> Step 1: Greeting + "What's your traffic source?" (free text, multi-type detection)
-  -> Step 2: "What regions?" (numbered 1-5: Tier1, Tier2, LATAM, Asia, Africa)
-  -> Step 3a: If Tier 1 selected -> ask specific countries (codes/numbers/ALL)
+  -> Step 2: "What regions?" (numbers, names, or mixed: 1 3 / T1, LATAM / Tier 1)
+  -> Step 3a: If Tier 1 selected -> ask specific countries (codes/numbers/names/ALL)
   -> Step 3b: If Tier 2 selected -> ask specific countries
   -> Step 3c: If LATAM selected -> ask specific countries
   -> Step 4: "Share your link" (skipped for PPC/MEDIABUY/NETWORK/FB types)
@@ -80,10 +80,10 @@ To find a user's ID: check bot logs (`docker logs auto-responder`) — every mes
 ## Conversation Steps
 
 1. `STEP_ASK_TRAFFIC` — free text, detects types via keywords
-2. `STEP_ASK_REGION` — numbers 1-5 (multi-select)
-3. `STEP_ASK_GEO_TIER1` — country codes/numbers/ALL (if Tier 1 selected)
-4. `STEP_ASK_GEO_TIER2` — country codes/numbers/ALL (if Tier 2 selected)
-5. `STEP_ASK_GEO_LATAM` — country codes/numbers/ALL (if LATAM selected)
+2. `STEP_ASK_REGION` — numbers (1 3), names (T1, LATAM, Tier 1), abbreviations (EU, EE), or mixed
+3. `STEP_ASK_GEO_TIER1` — country codes (ES DE), numbers (1 3), names (Spain, Испания), or ALL
+4. `STEP_ASK_GEO_TIER2` — same formats as Tier 1
+5. `STEP_ASK_GEO_LATAM` — same formats as Tier 1
 6. `STEP_ASK_LINKS` — free text (skipped for NO_LINK_TYPES)
 7. `STEP_DONE` / `STEP_DONE_OTHER` — finished
 8. `STEP_STOPPED` — bot stopped (off-script input or owner took over)
@@ -180,4 +180,4 @@ ssh root@77.42.69.208 "bash /tmp/r.sh"                         # Full restart
 - No Vertical detection (not asked in flow)
 - Inline keyboards not available for userbots — all input is text-based
 - Chat history check adds ~0.5s latency on first message from new contacts (Telegram API call)
-- Bot stops on first invalid input — no second chances (prevents trolling/gaming the system)
+- Bot stops on first genuinely invalid input — no second chances (prevents trolling). But recognizes flexible formats (T1, LATAM, Spain, EU etc.)
