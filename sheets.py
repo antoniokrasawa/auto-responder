@@ -57,7 +57,8 @@ class SheetsManager:
         Add a qualified inbound lead to Paripesa sheet.
 
         lead_data keys: partner_name, type, geo, links, telegram, notes
-        Auto-fills: first_touch=Inbound, status=NEW, date_contacted=today
+        Auto-fills: first_touch=Inbound, status=NEW
+        Date Contacted left empty for NEW status (filled later when status changes to CONTACTED+)
         """
         try:
             row = [''] * 16  # Paripesa: 16 columns A-P
@@ -68,7 +69,6 @@ class SheetsManager:
             row[COLUMNS['links']] = lead_data.get('links', '')
             row[COLUMNS['first_touch']] = 'Inbound'
             row[COLUMNS['status']] = 'NEW'
-            row[COLUMNS['date_contacted']] = datetime.now().strftime('%Y-%m-%d')
             row[COLUMNS['notes']] = lead_data.get('notes', '')
 
             # Telegram field
