@@ -655,13 +655,7 @@ async def _save_lead(conv):
 
     regions = conv.get('selected_regions', [])
     geos = conv.get('selected_geos', [])
-    has_our = any(r in regions for r in OUR_REGIONS)
     has_other = any(r in regions for r in OTHER_REGIONS)
-
-    # Only Asia/Africa — don't import to sheet
-    if not has_our:
-        log.info("Lead NOT saved to sheet (no relevant GEO): " + get_display_name(conv))
-        return
 
     traffic = conv.get('traffic_source', '')
     detected_types = detect_type(traffic)
@@ -686,7 +680,11 @@ async def _save_lead(conv):
         if other_tiers:
             notes_parts.append("+ " + ', '.join(other_tiers))
 
-    geo_str = ', '.join(real_geos)
+    # If only Asia/Africa (no specific country codes), put region names as GEO
+    if real_geos:
+        geo_str = ', '.join(real_geos)
+    else:
+        geo_str = ', '.join(regions)
 
     username = conv.get('username', '')
     if username:
