@@ -21,7 +21,7 @@ New DM from unknown contact
   -> Step 3b: If Tier 2 selected -> ask specific countries
   -> Step 3c: If LATAM selected -> ask specific countries
   -> Step 4: "Share your link" (skipped for PPC/MEDIABUY/NETWORK/FB types)
-  -> Save to Paripesa sheet: 1st Touch=Inbound, Status=NEW
+  -> Save to Paripesa sheet: 1st Touch=Inbound, Status=NEW, Date Contacted=empty
   -> Notify admin chat (if NOTIFY_CHAT_ID configured)
   -> "Thanks, I'll get back to you soon"
 ```
