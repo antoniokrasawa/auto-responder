@@ -28,7 +28,7 @@ from state import (
     ConversationState,
     STEP_ASK_TRAFFIC, STEP_ASK_REGION,
     STEP_ASK_GEO_TIER1, STEP_ASK_GEO_TIER2, STEP_ASK_GEO_LATAM,
-    STEP_ASK_LINKS, STEP_DONE, STEP_DONE_OTHER, STEP_EXPIRED
+    STEP_ASK_LINKS, STEP_DONE, STEP_DONE_OTHER, STEP_EXPIRED, STEP_STOPPED
 )
 from sheets import SheetsManager
 
@@ -63,39 +63,54 @@ def detect_type(text):
 
 
 def parse_region_input(text):
-    """Parse region selection from numbers like '1 3'"""
-    numbers = re.findall(r'[1-5]', text)
-    if not numbers:
+    """Parse region selection from numbers like '1 3' or '1,3'.
+    Strict: each part must be exactly one digit 1-5. Rejects '2525' etc."""
+    stripped = text.strip()
+    if len(stripped) > 30:
         return []
+    parts = re.split(r'[,\s]+', stripped)
     regions = []
-    for n in set(numbers):
-        idx = int(n) - 1
-        if 0 <= idx < len(REGION_OPTIONS):
-            regions.append(REGION_OPTIONS[idx])
+    for p in parts:
+        if not p:
+            continue
+        if not re.match(r'^[1-5]$', p):
+            return []  # any non-matching part = invalid
+        idx = int(p) - 1
+        region = REGION_OPTIONS[idx]
+        if region not in regions:
+            regions.append(region)
     return regions
 
 
 def parse_geo_input(text, valid_codes):
-    """Parse country codes from text. Accepts codes (ES DE) or numbers (1 3) or ALL."""
+    """Parse country codes from text. Accepts codes (ES DE) or numbers (1 3) or ALL.
+    Strict: each part must be a valid code or number. Any garbage = reject all."""
     stripped = text.strip().upper()
     if stripped == 'ALL':
         return list(valid_codes)
+    if len(stripped) > 100:
+        return []
 
     parts = re.split(r'[,\s]+', stripped)
     geos = []
     for p in parts:
+        if not p:
+            continue
         # Try as country code
         if p in valid_codes:
             if p not in geos:
                 geos.append(p)
             continue
-        # Try as number (1-indexed)
-        if p.isdigit():
+        # Try as number (1-2 digits only)
+        if re.match(r'^\d{1,2}$', p):
             idx = int(p) - 1
             if 0 <= idx < len(valid_codes):
                 code = valid_codes[idx]
                 if code not in geos:
                     geos.append(code)
+                continue
+        # Any non-matching part = invalid input
+        return []
     return geos
 
 
@@ -155,10 +170,23 @@ def find_next_geo_step(regions, after_step=None):
 
 # --- Admin commands (send to Saved Messages) ---
 
+ACTIVE_STEPS = (
+    STEP_ASK_TRAFFIC, STEP_ASK_REGION,
+    STEP_ASK_GEO_TIER1, STEP_ASK_GEO_TIER2, STEP_ASK_GEO_LATAM,
+    STEP_ASK_LINKS
+)
+
+
 @app.on_message(filters.private & filters.me)
 async def handle_admin_command(client: Client, message: Message):
     text = (message.text or '').strip()
     if not text.startswith('!'):
+        # Owner sent a normal message in a private chat — stop bot for this user
+        chat_id = message.chat.id
+        conv = state.conversations.get(chat_id)
+        if conv and conv.get('step') in ACTIVE_STEPS:
+            state.update(chat_id, step=STEP_STOPPED)
+            log.info("Owner took over conversation, bot stopped: " + str(chat_id))
         return
 
     if text == '!resetall':
@@ -185,13 +213,14 @@ async def handle_admin_command(client: Client, message: Message):
         total = len(state.conversations)
         done = sum(1 for c in state.conversations.values() if c.get('step') in ('done', 'done_other'))
         expired = sum(1 for c in state.conversations.values() if c.get('step') == 'expired')
-        active = total - done - expired
+        stopped = sum(1 for c in state.conversations.values() if c.get('step') == 'stopped')
+        active = total - done - expired - stopped
         try:
             with open(FAILED_LEADS_FILE, 'r') as f:
                 failed_count = len(json.load(f))
         except (FileNotFoundError, json.JSONDecodeError):
             failed_count = 0
-        msg = "Active: " + str(active) + "\nDone: " + str(done) + "\nExpired: " + str(expired) + "\nTotal: " + str(total)
+        msg = "Active: " + str(active) + "\nDone: " + str(done) + "\nExpired: " + str(expired) + "\nStopped: " + str(stopped) + "\nTotal: " + str(total)
         if failed_count:
             msg += "\nFailed leads pending: " + str(failed_count) + " (use !retry)"
         await message.reply(msg)
@@ -210,7 +239,7 @@ async def handle_admin_command(client: Client, message: Message):
                     if now - c.get('started_at', 0) <= CONVERSATION_TIMEOUT:
                         continue
             else:
-                if step in ('done', 'done_other', 'expired'):
+                if step in ('done', 'done_other', 'expired', 'stopped'):
                     continue
                 if now - c.get('started_at', 0) > CONVERSATION_TIMEOUT:
                     continue
@@ -296,7 +325,9 @@ async def handle_private_message(client: Client, message: Message):
         if step == STEP_ASK_REGION:
             regions = parse_region_input(text)
             if not regions:
-                await message.reply(get_message(lang, 'invalid_region'))
+                # Off-script input — stop responding
+                state.update(user_id, step=STEP_STOPPED)
+                log.info("Off-script at region step, stopped: " + str(user_id))
                 return
 
             state.update(user_id, selected_regions=regions)
@@ -334,7 +365,9 @@ async def handle_private_message(client: Client, message: Message):
 
             geos = parse_geo_input(text, valid)
             if not geos:
-                await message.reply(get_message(lang, 'invalid_geo'))
+                # Off-script input — stop responding
+                state.update(user_id, step=STEP_STOPPED)
+                log.info("Off-script at geo step, stopped: " + str(user_id))
                 return
 
             existing = conv.get('selected_geos', [])

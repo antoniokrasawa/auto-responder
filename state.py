@@ -15,6 +15,7 @@ STEP_ASK_LINKS = 'links'
 STEP_DONE = 'done'
 STEP_DONE_OTHER = 'done_other'
 STEP_EXPIRED = 'expired'
+STEP_STOPPED = 'stopped'  # off-script or owner took over
 
 
 class ConversationState:
@@ -73,4 +74,4 @@ class ConversationState:
 
     def is_done(self, user_id):
         conv = self.conversations.get(user_id)
-        return conv is not None and conv.get('step') in (STEP_DONE, STEP_DONE_OTHER, STEP_EXPIRED)
+        return conv is not None and conv.get('step') in (STEP_DONE, STEP_DONE_OTHER, STEP_EXPIRED, STEP_STOPPED)
