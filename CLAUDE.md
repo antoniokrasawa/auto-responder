@@ -56,8 +56,8 @@ To find a user's ID: check bot logs (`docker logs auto-responder`) — every mes
 - **is_contact check**: skips people already in Telegram contacts
 - **Chat history check**: before starting flow, fetches last 2 messages from chat — if >1 message exists, it's an existing conversation, skip auto-reply
 - **Owner takeover**: when Anton sends any message in a chat with active bot conversation, bot stops for that user immediately. Bot's own replies are tracked via `_bot_message_ids` set to avoid false positives (Pyrogram fires `filters.me` handler for outgoing messages from the same session).
-- **Strict input validation**: region/geo input must be clean separated numbers or codes. "2525" or random text = rejected. Input is sanitized via `_clean_input()` which strips invisible Unicode characters (zero-width spaces, RTL marks, etc.) before parsing.
-- **No retries on invalid input**: if user gives off-script input at any step, bot stops responding entirely (no "please try again" messages). Bot only works when dialog follows the script exactly.
+- **Smart input parsing**: Region accepts numbers (1 3), names (T1, LATAM, Tier 1), abbreviations (EU, EE), and mixed (1, LATAM). GEO accepts codes (ES DE), numbers (1 3), country names in EN/ES/RU (Spain, Brasil, Германия), or ALL. Input sanitized via `_clean_input()` which strips invisible Unicode characters. Unrecognized input still stops the bot.
+- **No retries on invalid input**: if user gives genuinely off-script input at any step, bot stops responding entirely (no "please try again" messages).
 - **Dedup**: checks Telegram username in sheet before writing
 - **Sheet filtering**: Only Tier1/Tier2/LATAM leads saved to sheet; Asia/Africa only = not saved
 - **VACATION_MODE**: When True, sends a P.S. vacation message after qualification (currently OFF)
